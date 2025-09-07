@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>Playfair demo - slideshow</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width:900px; margin:20px auto; }
+    #matrix { font-family: monospace; font-size:18px; margin:10px 0; white-space: pre; }
+    .slide { border-radius:8px; padding:18px; box-shadow:0 2px 8px rgba(0,0,0,0.12); margin-bottom:12px }
+    button{ padding:8px 12px; margin-right:6px }
+    input{ padding:6px 8px; margin-right:8px; }
+  </style>
+</head>
+<body>
+  <h2>Playfair cipher — slideshow</h2>
+  <label>Key: <input id="key" value="MONARCHY"></label>
+  <label> Plaintext: <input id="pt" value="INSTRUMENTS"></label>
+  <div style="margin-top:10px">
+    <button id="start">Start</button>
+    <button id="prev">Prev</button>
+    <button id="next">Next</button>
+  </div>
+
+  <div id="slides" style="margin-top:18px"></div>
+
+<script>
+function genKeyMatrix(key){
+  key = key.toUpperCase().replace(/J/g,'I');
+  const seen = [];
+  for(const ch of key){ if(/[A-Z]/.test(ch) && !seen.includes(ch)) seen.push(ch); }
+  for(let i=0;i<26;i++){ const ch = String.fromCharCode(65+i); if(ch==='J') continue; if(!seen.includes(ch)) seen.push(ch); }
+  const matrix = [];
+  for(let r=0;r<5;r++) matrix.push(seen.slice(r*5,(r+1)*5));
+  return matrix;
+}
+function findPos(matrix,ch){ for(let i=0;i<5;i++) for(let j=0;j<5;j++) if(matrix[i][j]===ch) return [i,j]; }
+function preprocess(pt){ pt = pt.toUpperCase().replace(/J/g,'I').replace(/[^A-Z]/g,''); const res=[]; let i=0; while(i<pt.length){ let a=pt[i]; let b = pt[i+1]||'X'; if(a===b){ res.push(a+'X'); i+=1; } else { res.push(a+b); i+=2; } } if(res.length>0 && res[res.length-1].length===1) res[res.length-1]+= 'X'; return res; }
+function encryptPair(matrix,pair){ const a=pair[0], b=pair[1]; const pa=findPos(matrix,a), pb=findPos(matrix,b); const ra=pa[0], ca=pa[1], rb=pb[0], cb=pb[1]; if(ra===rb) return matrix[ra][(ca+1)%5]+matrix[rb][(cb+1)%5]; if(ca===cb) return matrix[(ra+1)%5][ca]+matrix[(rb+1)%5][cb]; return matrix[ra][cb]+matrix[rb][ca]; }
+
+let slides=[]; let idx=0;
+function buildSlides(){
+  const key = document.getElementById('key').value.trim();
+  const pt = document.getElementById('pt').value.trim();
+  const matrix = genKeyMatrix(key);
+  const pairs = preprocess(pt);
+  slides = [];
+  slides.push({title:'Ma trận khóa', content: matrix.map(r=>r.join(' ')).join('\n')});
+  slides.push({title:'Cặp để mã hóa', content: pairs.join(' - ')});
+  let ct = '';
+  for(const p of pairs){ const c = encryptPair(matrix,p); slides.push({title:`${p} → ${c}`, content:`Cặp: ${p}\nMã hóa: ${c}`}); ct += c; }
+  slides.push({title:'Kết quả', content: `Ciphertext: ${ct}`});
+  idx = 0; renderSlide();
+}
+function renderSlide(){ const s = slides[idx]; const container = document.getElementById('slides'); container.innerHTML = `<div class="slide"><h3>${s.title}</h3><pre id="matrix">${s.content}</pre><div>Slide ${idx+1}/${slides.length}</div></div>`; }
+
+document.getElementById('start').onclick = ()=>{ buildSlides(); };
+document.getElementById('next').onclick = ()=>{ if(idx<slides.length-1) idx++; renderSlide(); };
+document.getElementById('prev').onclick = ()=>{ if(idx>0) idx--; renderSlide(); };
+</script>
+</body>
+</html>
